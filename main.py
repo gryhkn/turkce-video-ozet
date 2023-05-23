@@ -15,7 +15,8 @@ def set_up_st():
     st.title("Özet Geç")
     st.caption("Bu uygulama ile Türkçe youtube videolarının özetlerini oluşturabilirsiniz. "
                "Eğer video 5 dakikadan uzunsa, her 5 dakikanın özetini çıkarır. Kullanmak için OpenAI API keyinizi ve özetlemek istediğiniz video linkini girmeniz gerekiyor... ")
-
+    st.caption(
+        "Daha fazla AI uygulaması için beni [Giray](https://twitter.com/gryhkn) takip etmeyi unutmayın.")
 
 def check_api_key(api_key):
     if not api_key.startswith('sk-'):
