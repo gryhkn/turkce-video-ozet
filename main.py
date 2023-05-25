@@ -4,6 +4,21 @@ from llama_index import download_loader, GPTVectorStoreIndex, LLMPredictor, Prom
 from langchain import OpenAI
 from langchain.chat_models import ChatOpenAI
 from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import (
+    TranscriptsDisabled,
+    NoTranscriptFound,
+    CouldNotRetrieveTranscript,
+    VideoUnavailable,
+    TooManyRequests,
+    NotTranslatable,
+    TranslationLanguageNotAvailable,
+    NoTranscriptAvailable,
+    CookiePathInvalid,
+    CookiesInvalid,
+    FailedToCreateConsentCookie,
+    YouTubeRequestFailed,
+    InvalidVideoId,
+)
 from youtube_transcript_api.formatters import JSONFormatter
 import json
 import datetime
@@ -32,7 +47,7 @@ def send_click(youtube_link):
 
 def main():
     doc_path = './storage/'
-    transcript_file = './storage/transkript.json'
+    transcript_file = './storage/transkript.json'    
     youtube_img = 'video_ss.png'
     youtube_link = ''
     if 'video_id' not in st.session_state:
@@ -45,12 +60,49 @@ def main():
         process_video(api_key, youtube_link, doc_path, transcript_file, youtube_img)
 
 
+def retrieve_transcript(st):
+    try:
+        srt = YouTubeTranscriptApi.get_transcript(st.session_state.video_id, languages=['tr'])
+        formatter = JSONFormatter()
+        json_formatted = formatter.format_transcript(srt)
+        return json_formatted
+    except CouldNotRetrieveTranscript as e:
+        if isinstance(e, TranscriptsDisabled):
+            st.error("Bu video için altyazılar devre dışı bırakılmış veya mevcut değil.")
+        elif isinstance(e, NoTranscriptFound):
+            st.error("Belirtilen video için altyazı bulunamadı.")
+        elif isinstance(e, CouldNotRetrieveTranscript):
+            st.error("Altyazı alınamadı.")
+        elif isinstance(e, VideoUnavailable):
+            st.error("Video mevcut değil.")
+        elif isinstance(e, TooManyRequests):
+            st.error("Çok fazla istek gönderildi. Bir süre bekleyin veya farklı bir IP kullanın.")
+        elif isinstance(e, NotTranslatable):
+            st.error("İstenilen dil çevrilemez.")
+        elif isinstance(e, TranslationLanguageNotAvailable):
+            st.error("İstenilen çeviri dili mevcut değil.")
+        elif isinstance(e, NoTranscriptAvailable):
+            st.error("Bu video için altyazı mevcut değil.")
+        elif isinstance(e, CookiePathInvalid):
+            st.error("Sağlanan çerez dosyası yüklenemedi.")
+        elif isinstance(e, CookiesInvalid):
+            st.error("Sağlanan çerezler geçerli değil (süresi dolmuş olabilir).")
+        elif isinstance(e, FailedToCreateConsentCookie):
+            st.error("Çerezleri kaydetmeye otomatik olarak izin verme başarısız oldu.")
+        elif isinstance(e, YouTubeRequestFailed):
+            st.error(f"YouTube isteği başarısız oldu: {e.reason}")
+        elif isinstance(e, InvalidVideoId):
+            st.error("Geçersiz video ID'si sağlandı. Lütfen video ID'sini kullanın, URL değil.")
+        return None
+
 def process_video(api_key, youtube_link, doc_path, transcript_file, youtube_img):
     progress_bar = st.progress(5, text=f"Özetleniyor...")
 
-    srt = YouTubeTranscriptApi.get_transcript(st.session_state.video_id, languages=['tr'])
-    formatter = JSONFormatter()
-    json_formatted = formatter.format_transcript(srt)
+    json_formatted = retrieve_transcript(st)
+    if json_formatted is None:
+        progress_bar.progress(100, text="Hata!")
+        return
+
     with open(transcript_file, 'w') as f:
         f.write(json_formatted)
 
